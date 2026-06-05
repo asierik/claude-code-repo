@@ -1,0 +1,10 @@
+I want to create an android app that mixes the food menu planing for the week and grocery shopping
+The idea is to have an app that shows a calendar, and in this calendar, you can click in any day, where you can plan breakfast, lunch and dinner. The three elements must be optional, no need to fill all of them for a day if you don want to.
+When you are going to fill one of the slots of the day, the app should have a list of recipes that the user has already entered into the app. The user should also have the possibility to add new recipees. This list should be easy to filter, with ingredients of the list or with tags that can be added to the recipee.
+This recipees should have a list of ingredients that the user can fill, and the previously mentioned tags.
+With the ingredients of the planified meals, the app should automatically fill a grocery shopping list, for all the meals planified from the moment we check the list to the future (if the user opens the list on monday at 17:20, then all recipees planified after that monday at 17:20 should have their ingredients in the list)
+The elements of the list should be easily removable, clicking on a checkbox or similar should be enough to remove them from the list
+The calendar should be easily shareable with other users, and it should be collaborative. This means that a user can share my calendar, grocery shopping list and recipees with other user of the app, and they can collaborate together, changing the recipees of the other, the calendar or the grocery list.
+That does not mean that everything is public. A user should only has access to the list, calendar and recipees of its own or of other person who shared the recipees with him, but not to all the recipees, lists or calendars of the app
+The app should have buttons to easily access the calendar, the grocery shopping list and the list of recipees the user can access
+All this shared characteristics, of course, should be shared between different devices.ß
