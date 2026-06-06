@@ -1,5 +1,12 @@
 const SESSION_COOKIE = 'sid';
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
+
+function buildCookieValue(value, options) {
+  const flags = [`${SESSION_COOKIE}=${value}`, 'HttpOnly', 'Path=/', `Max-Age=${options.maxAge}`, 'SameSite=Lax'];
+  if (options.secure) flags.push('Secure');
+  return flags.join('; ');
+}
 
 export function parseCookies(req) {
   const out = {};
@@ -18,9 +25,9 @@ export function readSessionToken(req) {
 }
 
 export function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${MAX_AGE}; SameSite=Lax`);
+  res.setHeader('Set-Cookie', buildCookieValue(token, { maxAge: MAX_AGE, secure: COOKIE_SECURE }));
 }
 
 export function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+  res.setHeader('Set-Cookie', buildCookieValue('', { maxAge: 0, secure: COOKIE_SECURE }));
 }
