@@ -1,8 +1,8 @@
-import { db } from './connection.js';
+import { executeMultiple } from './connection.js';
 
 // Creates all tables if they don't exist. Called once at startup.
-export function migrate() {
-  db.exec(`
+export async function migrate() {
+  await executeMultiple(`
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   username   TEXT UNIQUE NOT NULL,

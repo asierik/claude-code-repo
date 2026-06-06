@@ -11,15 +11,15 @@ function normalizeUsername(raw) {
 
 export const authService = {
   // Returns { user, token }. Caller (route) is responsible for the cookie.
-  register(rawUsername, rawPassword) {
+  async register(rawUsername, rawPassword) {
     const username = normalizeUsername(rawUsername);
     const password = String(rawPassword || '');
     if (username.length < 2 || password.length < 4)
       throw badRequest('Username (2+ chars) and password (4+ chars) required');
-    if (userRepository.existsByUsername(username)) throw conflict('Username already taken');
+    if (await userRepository.existsByUsername(username)) throw conflict('Username already taken');
 
     const salt = makeSalt();
-    const userId = userRepository.create({
+    const userId = await userRepository.create({
       username,
       passHash: hashPassword(password, salt),
       salt,
@@ -27,32 +27,32 @@ export const authService = {
     });
 
     // Every new user gets a personal space to start from.
-    spaceService.createForOwner(`${username}'s kitchen`, userId);
+    await spaceService.createForOwner(`${username}'s kitchen`, userId);
 
-    return { user: { id: userId, username }, token: this.createSession(userId) };
+    return { user: { id: userId, username }, token: await this.createSession(userId) };
   },
 
-  login(rawUsername, rawPassword) {
+  async login(rawUsername, rawPassword) {
     const username = normalizeUsername(rawUsername);
-    const user = userRepository.findByUsername(username);
+    const user = await userRepository.findByUsername(username);
     if (!user || !verifyPassword(String(rawPassword || ''), user.salt, user.pass_hash))
       throw unauthorized('Invalid username or password');
-    return { user: { id: user.id, username: user.username }, token: this.createSession(user.id) };
+    return { user: { id: user.id, username: user.username }, token: await this.createSession(user.id) };
   },
 
-  logout(token) {
-    if (token) sessionRepository.delete(token);
+  async logout(token) {
+    if (token) await sessionRepository.delete(token);
   },
 
-  createSession(userId) {
+  async createSession(userId) {
     const token = crypto.randomBytes(32).toString('hex');
-    sessionRepository.create(token, userId, Date.now());
+    await sessionRepository.create(token, userId, Date.now());
     return token;
   },
 
-  userForToken(token) {
+  async userForToken(token) {
     if (!token) return null;
-    const userId = sessionRepository.findUserIdByToken(token);
-    return userId ? userRepository.findById(userId) : null;
+    const userId = await sessionRepository.findUserIdByToken(token);
+    return userId ? await userRepository.findById(userId) : null;
   },
 };

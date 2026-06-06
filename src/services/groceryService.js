@@ -13,9 +13,9 @@ function localYmd(ms) {
 export const groceryService = {
   // Aggregate ingredients of every meal planned today or later (regardless of
   // time of day), merging duplicates by name and folding in ticked-off items.
-  buildList(spaceId, nowMs = Date.now()) {
+  async buildList(spaceId, nowMs = Date.now()) {
     const today = localYmd(nowMs);
-    const entries = planRepository.listWithIngredients(spaceId);
+    const entries = await planRepository.listWithIngredients(spaceId);
     const items = new Map(); // key -> { key, name, amounts[], from:Set }
 
     for (const e of entries) {
@@ -30,7 +30,7 @@ export const groceryService = {
       }
     }
 
-    const checked = new Set(groceryRepository.checkedKeys(spaceId));
+    const checked = new Set(await groceryRepository.checkedKeys(spaceId));
     return [...items.values()]
       .map((i) => ({
         key: i.key,
@@ -43,10 +43,10 @@ export const groceryService = {
       .sort((a, b) => Number(a.checked) - Number(b.checked) || a.name.localeCompare(b.name));
   },
 
-  setChecked(spaceId, rawKey, checked) {
+  async setChecked(spaceId, rawKey, checked) {
     const key = String(rawKey || '').trim().toLowerCase();
     if (!key) throw badRequest('item_key required');
-    if (checked) groceryRepository.check(spaceId, key);
-    else groceryRepository.uncheck(spaceId, key);
+    if (checked) await groceryRepository.check(spaceId, key);
+    else await groceryRepository.uncheck(spaceId, key);
   },
 };

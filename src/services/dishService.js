@@ -14,14 +14,14 @@ function cleanTags(raw) {
 }
 
 export const dishService = {
-  list(spaceId) {
-    return dishRepository.listBySpace(spaceId);
+  async list(spaceId) {
+    return await dishRepository.listBySpace(spaceId);
   },
 
-  create(spaceId, userId, body) {
+  async create(spaceId, userId, body) {
     const name = String(body.name || '').trim();
     if (!name) throw badRequest('Dish name required');
-    return dishRepository.create(
+    return await dishRepository.create(
       spaceId,
       userId,
       { name, ingredients: cleanIngredients(body.ingredients), tags: cleanTags(body.tags) },
@@ -29,18 +29,18 @@ export const dishService = {
     );
   },
 
-  update(spaceId, dishId, body) {
-    const existing = dishRepository.findById(dishId, spaceId);
+  async update(spaceId, dishId, body) {
+    const existing = await dishRepository.findById(dishId, spaceId);
     if (!existing) throw notFound('Dish not found');
     const name = String(body.name || '').trim() || existing.name;
-    return dishRepository.update(dishId, spaceId, {
+    return await dishRepository.update(dishId, spaceId, {
       name,
       ingredients: cleanIngredients(body.ingredients),
       tags: cleanTags(body.tags),
     });
   },
 
-  remove(spaceId, dishId) {
-    dishRepository.remove(dishId, spaceId);
+  async remove(spaceId, dishId) {
+    await dishRepository.remove(dishId, spaceId);
   },
 };
