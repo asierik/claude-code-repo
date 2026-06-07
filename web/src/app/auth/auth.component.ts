@@ -22,7 +22,7 @@ import { AuthService } from '../core/auth.service';
           </button>
         </form>
         <p class="switch">
-          <span>{{ mode() === 'login' ? 'New here?' : 'Have an account?' }}</span>
+          <span>{{ mode() === 'login' ? 'New here?' : 'Have an account?' }}&nbsp;</span>
           <a (click)="toggle()">{{ mode() === 'login' ? 'Create an account' : 'Sign in' }}</a>
         </p>
       </div>

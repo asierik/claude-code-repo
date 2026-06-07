@@ -16,7 +16,7 @@ import { GroceryItem } from '../core/models';
         <label class="gitem" [class.done]="item.checked">
           <input type="checkbox" [checked]="item.checked" (change)="toggle(item)" />
           <span class="g-main">
-            <span class="g-name">{{ item.name }}</span>
+            <span class="g-name">{{ item.name }}&nbsp;</span>
             @if (item.amounts.length) { <span class="muted"> · {{ item.amounts.join(', ') }}</span> }
             <span class="g-sub">for {{ item.from.join(', ') }}</span>
           </span>
