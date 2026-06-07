@@ -44,9 +44,12 @@ cd web && npx ng build && cd ..
 node server.js                  # http://localhost:3000
 # or: npm start
 
-# Env vars
+# Env vars (can be stored in a `.env` file; `server.js` loads `dotenv`)
 PORT=3000                       # default 3000
-MEALMATE_DB=/path/to/file.db    # default ./mealmate.db
+MEALMATE_DB=/path/to/file.db    # default ./mealmate.db (local fallback)
+TURSO_DATABASE_URL=libsql://... # optional: Turso/libSQL URL for remote DB
+TURSO_AUTH_TOKEN=...            # optional: Turso auth token (when required)
+COOKIE_SECURE=true              # optional: set to force Secure cookie (or set NODE_ENV=production)
 ```
 
 **Important: there is no `ng serve` in the normal loop.** Express serves the
@@ -60,15 +63,14 @@ the browser. Backend changes just need a `node server.js` restart.
 
 | Layer    | Choice | Notes |
 |----------|--------|-------|
-| Runtime  | Node 26 | uses built-in `node:sqlite` → **zero native deps** |
+| Runtime  | Node 26 | uses `@libsql/client` for Turso (HTTP/WS/file) with an optional local file fallback |
 | Backend  | Express 4.22 (ESM, `"type":"module"`) | layered, see §4 |
-| DB       | SQLite via `node:sqlite` `DatabaseSync` | file at `./mealmate.db`, WAL mode |
+| DB       | Turso / libSQL via `@libsql/client` (remote) with optional local `file:` fallback | client exposes async `execute` / `migrate` / `batch` APIs |
 | Frontend | Angular 22 standalone + **signals** | no NgModules, no router (signal-based tab switch) |
 | Auth     | `node:crypto` scrypt + random session token cookie | no external auth lib |
 | Deploy   | Cloudflare quick tunnel (free) | see §9 |
 
-There is **one** runtime npm dependency on the backend (`express`); everything
-else (sqlite, crypto, cookies) is Node built-ins.
+There is **one** runtime npm dependency on the backend (`express`) plus `@libsql/client`; the code now uses `@libsql/client` for database access and `dotenv` for environment variables. Crypto and cookies remain Node built-ins.
 
 ---
 
@@ -79,10 +81,10 @@ else (sqlite, crypto, cookies) is Node built-ins.
 ```
 routes/        HTTP only: parse req, call a service, send res. NO SQL.
   └─ services/   business logic + validation; throw AppError(status,msg). NO Express, NO SQL.
-       └─ repositories/   the ONLY files that touch SQL (node:sqlite).
+       └─ repositories/   the ONLY files that touch SQL (now use async helpers over @libsql/client).
 middleware/    requireAuth (session→req.user), requireSpace (access control→req.space/req.role), errorHandler
-util/          errors (AppError + helpers), password (scrypt), cookies (parse/set/clear)
-db/            connection (the single DatabaseSync), schema (migrate() = CREATE TABLE IF NOT EXISTS)
+util/          errors (AppError + helpers), password (scrypt), cookies (parse/set/clear), asyncHandler (wrap async Express handlers)
+db/            connection (the single libSQL/Turso Client), schema (async migrate() using executeMultiple / migrate)
 app.js         builds the Express app, mounts routers, serves web/dist, SPA fallback, errorHandler last
 server.js      entry: migrate() then listen()
 ```
@@ -243,8 +245,7 @@ clean repository boundary is what makes that swap localized.
 - No live multi-device sync — collaborators see changes on **reload/poll**, not in
   real time. Add SSE/WebSocket if needed.
 - No migration system; schema changes need a DB reset.
-- Cookies are `SameSite=Lax`, **not `Secure`** (fine on localhost + the HTTPS
-  tunnel). For a real always-on HTTPS deploy, add `Secure` in `src/util/cookies.js`.
+ - Cookies are `SameSite=Lax`. For real HTTPS deployments the app now sets `Secure` when `NODE_ENV=production` or `COOKIE_SECURE=true` (see `src/util/cookies.js`). This keeps local dev on `http://localhost` working while enforcing secure-only cookies in production.
 - No automated test suite — verification is manual via `playwright-cli`.
 - Calendar is week-only (no month view / drag-and-drop).
 - A minimal pass-through service worker (`web/public/sw.js`) exists only to satisfy
@@ -254,8 +255,9 @@ clean repository boundary is what makes that swap localized.
 
 ## 11. TL;DR for an agent making a change
 
-1. Backend change → edit the right layer (route/service/repo), restart `node server.js`.
-2. Frontend change → edit `web/src/...`, **`cd web && npx ng build`**, reload.
-3. Schema change → update `src/db/schema.js`, `rm mealmate.db*`, restart.
+1. Backend change → edit the right layer (route/service/repo), restart `node server.js` (the server now awaits async `migrate()` at startup).
+2. Env: set `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` for Turso or `MEALMATE_DB` for local file; the app loads `.env` via `dotenv`.
+3. Frontend change → edit `web/src/...`, **`cd web && npx ng build`**, reload.
+4. Schema change → update `src/db/schema.js` (use `executeMultiple`/`migrate` when targeting remote libSQL), `rm mealmate.db*` for a fresh local DB, restart.
 4. **Verify in a real browser with `playwright-cli` before claiming done** (CLAUDE.md).
 5. Respect §7 decisions and the design-token rule (§7).
