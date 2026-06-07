@@ -2,11 +2,15 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { SpaceService } from '../core/space.service';
 import { GroceryService } from '../core/grocery.service';
 import { GroceryItem } from '../core/models';
+import { LoaderComponent } from '../shared/loader/loader.component';
 
 @Component({
   selector: 'app-grocery',
+  imports: [LoaderComponent],
   template: `
-    <h2>Grocery list</h2>
+    <div style="position:relative">
+      <app-loader [loading]="loading" message="Loading…"></app-loader>
+      <h2>Grocery list</h2>
     <p class="view-subtitle">
       Everything for meals planned from today onward. Tick items off as you grab them.
     </p>
@@ -25,6 +29,7 @@ import { GroceryItem } from '../core/models';
         <p class="empty">Nothing to buy yet — plan some meals in the Calendar.</p>
       }
     </div>
+      </div>
   `,
 })
 export class GroceryComponent {
@@ -32,11 +37,15 @@ export class GroceryComponent {
   private grocerySvc = inject(GroceryService);
 
   items = signal<GroceryItem[]>([]);
+  loading = signal(false);
 
   constructor() {
     effect(() => {
       const id = this.space.activeId();
-      if (id != null) this.reload(id);
+      if (id != null) {
+        this.loading.set(true);
+        this.reload(id).finally(() => this.loading.set(false));
+      }
     });
   }
 

@@ -6,14 +6,16 @@ import { Member } from '../core/models';
 import { CalendarComponent } from '../calendar/calendar.component';
 import { DishesComponent } from '../dishes/dishes.component';
 import { GroceryComponent } from '../grocery/grocery.component';
+import { LoaderComponent } from '../shared/loader/loader.component';
 
 type View = 'calendar' | 'dishes' | 'grocery';
 
 @Component({
   selector: 'app-shell',
-  imports: [FormsModule, CalendarComponent, DishesComponent, GroceryComponent],
+  imports: [FormsModule, CalendarComponent, DishesComponent, GroceryComponent, LoaderComponent],
   template: `
     <div class="app">
+      <app-loader [loading]="busy" message="Loading…"></app-loader>
       <header class="topbar">
         <div class="space-switch">
           <select [ngModel]="space.activeId()" (ngModelChange)="onSpaceChange($event)">

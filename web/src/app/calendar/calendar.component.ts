@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
+import { LoaderComponent } from '../shared/loader/loader.component';
 import { FormsModule } from '@angular/forms';
 import { SpaceService } from '../core/space.service';
 import { PlanService } from '../core/plan.service';
@@ -27,9 +28,11 @@ function addDays(d: Date, n: number): Date {
 
 @Component({
   selector: 'app-calendar',
-  imports: [FormsModule, TitleCasePipe],
+  imports: [FormsModule, TitleCasePipe, LoaderComponent],
   template: `
-    <h2>Calendar</h2>
+    <div style="position:relative">
+      <app-loader [loading]="loading" message="Loading…"></app-loader>
+      <h2>Calendar</h2>
 
     <div class="week-nav">
       <button class="btn small" (click)="shiftWeek(-1)">‹ Prev</button>
@@ -94,6 +97,7 @@ function addDays(d: Date, n: number): Date {
         </div>
       </div>
     }
+      </div>
   `,
 })
 export class CalendarComponent {
@@ -105,6 +109,7 @@ export class CalendarComponent {
   weekStart = signal<Date>(startOfWeek(new Date()));
   plan = signal<PlanEntry[]>([]);
   dishes = signal<Dish[]>([]);
+  loading = signal(false);
   picker = signal<{ date: string; slot: Slot; dateLabel: string } | null>(null);
   pickerSearch = signal('');
 
@@ -147,7 +152,10 @@ export class CalendarComponent {
     // Reload whenever the active space changes (and on first mount).
     effect(() => {
       const id = this.space.activeId();
-      if (id != null) this.reload(id);
+      if (id != null) {
+        this.loading.set(true);
+        this.reload(id).finally(() => this.loading.set(false));
+      }
     });
   }
 
@@ -156,12 +164,16 @@ export class CalendarComponent {
   }
 
   private async reload(spaceId: number) {
-    const [plan, dishes] = await Promise.all([
-      this.planSvc.list(spaceId),
-      this.dishSvc.list(spaceId),
-    ]);
-    this.plan.set(plan);
-    this.dishes.set(dishes);
+    try {
+      const [plan, dishes] = await Promise.all([
+        this.planSvc.list(spaceId),
+        this.dishSvc.list(spaceId),
+      ]);
+      this.plan.set(plan);
+      this.dishes.set(dishes);
+    } finally {
+      // loading is cleared by caller
+    }
   }
 
   shiftWeek(n: number) {

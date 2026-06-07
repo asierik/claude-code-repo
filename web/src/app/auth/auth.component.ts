@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth.service';
+import { LoaderComponent } from '../shared/loader/loader.component';
 
 @Component({
   selector: 'app-auth',
-  imports: [FormsModule],
+  imports: [FormsModule, LoaderComponent],
   template: `
-    <section class="auth">
+    <section class="auth" style="position:relative">
+      <app-loader [loading]="busy" message="Processing…"></app-loader>
       <div class="auth-card">
         <h1 class="brand">🥕 MealMate</h1>
         <p class="tagline">Plan meals together. Shop once.</p>

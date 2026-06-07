@@ -1,0 +1,24 @@
+.loader-scrim {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  z-index: var(--z-modal, 2000);
+}
+.loader-card {
+  background: var(--surface, #fff);
+  padding: var(--space-4, 16px);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-modal, 0 6px 24px rgba(0,0,0,0.2));
+  min-width: 220px;
+}
+.loader-body { text-align: center; }
+.skeleton { width: 200px; }
+.s-line { height: 12px; background: linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03)); margin: 8px 0; border-radius: 6px; }
+.s-line.l1 { width: 70%; }
+.s-line.l2 { width: 90%; }
+.s-line.l3 { width: 50%; }
+.loader-msg { margin-top: 8px; color: var(--muted, #666); font-size: 0.95rem; }
+.spinner { font-size: 28px; line-height: 1; }

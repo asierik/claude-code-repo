@@ -1,0 +1,13 @@
+<div *ngIf="isLoading()" class="loader-scrim" role="status" aria-live="polite">
+  <div class="loader-card">
+    <div class="loader-body">
+      <div *ngIf="mode === 'skeleton'" class="skeleton">
+        <div class="s-line l1"></div>
+        <div class="s-line l2"></div>
+        <div class="s-line l3"></div>
+      </div>
+      <div *ngIf="mode === 'spinner'" class="spinner" aria-hidden="true">●</div>
+      <div class="loader-msg">{{ message || 'Loading…' }}</div>
+    </div>
+  </div>
+</div>

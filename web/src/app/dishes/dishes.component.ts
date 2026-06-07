@@ -1,14 +1,17 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LoaderComponent } from '../shared/loader/loader.component';
 import { SpaceService } from '../core/space.service';
 import { DishService } from '../core/dish.service';
 import { Dish, Ingredient } from '../core/models';
 
 @Component({
   selector: 'app-dishes',
-  imports: [FormsModule],
+  imports: [FormsModule, LoaderComponent],
   template: `
-    <h2>Dishes</h2>
+    <div style="position:relative">
+      <app-loader [loading]="loading" message="Loading…"></app-loader>
+      <h2>Dishes</h2>
 
     <div class="filterbar">
       <input placeholder="Search name or ingredient…"
@@ -83,6 +86,7 @@ import { Dish, Ingredient } from '../core/models';
         </div>
       </div>
     }
+      </div>
   `,
 })
 export class DishesComponent {
@@ -90,6 +94,7 @@ export class DishesComponent {
   private dishSvc = inject(DishService);
 
   dishes = signal<Dish[]>([]);
+  loading = signal(false);
   search = signal('');
   activeTags = signal<string[]>([]);
 
@@ -123,7 +128,10 @@ export class DishesComponent {
   constructor() {
     effect(() => {
       const id = this.space.activeId();
-      if (id != null) this.reload(id);
+      if (id != null) {
+        this.loading.set(true);
+        this.reload(id).finally(() => this.loading.set(false));
+      }
     });
   }
 
