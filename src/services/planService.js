@@ -1,5 +1,7 @@
 import { planRepository } from '../repositories/planRepository.js';
 import { dishRepository } from '../repositories/dishRepository.js';
+import { groceryRepository } from '../repositories/groceryRepository.js';
+import { ingredientKey } from './groceryService.js';
 import { badRequest } from '../util/errors.js';
 
 export const SLOTS = ['breakfast', 'lunch', 'dinner'];
@@ -28,6 +30,13 @@ export const planService = {
       throw badRequest(`A slot can have at most ${MAX_DISHES_PER_SLOT} dishes`);
 
     await planRepository.addToSlot(spaceId, date, slot, dishId);
+
+    // Newly needed again, even if a previous/removed dish left them checked.
+    for (const ing of dish.ingredients) {
+      const key = ingredientKey(ing.name);
+      if (key) await groceryRepository.uncheck(spaceId, key);
+    }
+
     return { ok: true };
   },
 
