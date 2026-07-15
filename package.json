@@ -6,12 +6,14 @@
   "description": "Collaborative meal planning + grocery list PWA",
   "scripts": {
     "build": "cd web && npm ci --include=dev && npx ng build",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate": "node src/db/migrator.js"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
     "dotenv": "^17.4.2",
-    "express": "^4.22.2"
+    "express": "^4.22.2",
+    "umzug": "^3.8.3"
   },
   "engines": {
     "node": "24.15.0"

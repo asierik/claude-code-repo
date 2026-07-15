@@ -1,7 +1,10 @@
-import { executeMultiple } from './connection.js';
+// Baseline schema. Every statement is CREATE TABLE IF NOT EXISTS, so running
+// this against a database that was created by the old ad-hoc migrate() (pre
+// migration-system) is a safe no-op — it won't touch existing tables or rows.
+// It only matters for brand-new databases.
 
-// Creates all tables if they don't exist. Called once at startup.
-export async function migrate() {
+/** @type {import('umzug').MigrationFn<import('./connection.js')>} */
+export const up = async ({ context: { executeMultiple } }) => {
   await executeMultiple(`
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,4 +71,8 @@ CREATE TABLE IF NOT EXISTS grocery_custom_items (
   created_at INTEGER NOT NULL
 );
   `);
-}
+};
+
+// No down migration, by policy — see AGENTS.md §5. SQLite/libSQL rollbacks
+// (e.g. dropping a column) usually require rebuilding the table, which risks
+// data loss; undo a change by writing a new forward migration instead.
