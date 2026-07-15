@@ -13,6 +13,28 @@ export const spaceService = {
     return await spaceRepository.listForUser(userId);
   },
 
+  // Spaces plus which one (if any) is the user's favourite. A stored
+  // favourite that's no longer in the user's accessible list (space
+  // deleted, access revoked) resolves to null rather than being trusted —
+  // favouriteStale tells the caller that happened, so it can say so.
+  async listWithFavourite(userId) {
+    const spaces = await spaceRepository.listForUser(userId);
+    const rawFavouriteId = await userRepository.getFavouriteSpaceId(userId);
+    const favouriteId = spaces.some((s) => s.id === rawFavouriteId) ? rawFavouriteId : null;
+    const favouriteStale = rawFavouriteId != null && favouriteId == null;
+    return { spaces, favouriteId, favouriteStale };
+  },
+
+  // Caller must have already verified the user has access to spaceId.
+  async setFavourite(userId, spaceId) {
+    await userRepository.setFavouriteSpaceId(userId, spaceId);
+  },
+
+  async clearFavourite(userId, spaceId) {
+    const current = await userRepository.getFavouriteSpaceId(userId);
+    if (current === spaceId) await userRepository.setFavouriteSpaceId(userId, null);
+  },
+
   // Used by access-control middleware: returns { space, role } or throws.
   async requireAccess(spaceId, userId) {
     const space = await spaceRepository.findById(spaceId);

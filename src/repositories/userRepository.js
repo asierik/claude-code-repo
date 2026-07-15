@@ -22,4 +22,13 @@ export const userRepository = {
     ]);
     return Number(info.lastInsertRowid ?? 0);
   },
+
+  async getFavouriteSpaceId(userId) {
+    const row = await get('SELECT favourite_space_id FROM users WHERE id = ?', [userId]);
+    return row?.favourite_space_id ?? null;
+  },
+
+  async setFavouriteSpaceId(userId, spaceId) {
+    await run('UPDATE users SET favourite_space_id = ? WHERE id = ?', [spaceId, userId]);
+  },
 };
