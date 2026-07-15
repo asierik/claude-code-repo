@@ -29,7 +29,7 @@ import { GroceryItem } from '../core/models';
       } @empty {
         <p class="empty">Nothing to buy yet — plan some meals in the Calendar, or add your own item.</p>
       }
-
+    </div>
     <button class="fab" (click)="openAdd()" aria-label="Add item">＋</button>
 
     @if (formOpen()) {
@@ -51,7 +51,6 @@ import { GroceryItem } from '../core/models';
         </div>
       </div>
     }
-    </div>
   `,
 })
 export class GroceryComponent {
