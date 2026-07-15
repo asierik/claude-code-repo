@@ -11,7 +11,12 @@ planRoutes.get('/', asyncHandler(async (req, res) => {
   res.json({ plan: await planService.getPlan(req.space.id) });
 }));
 
-// Set or clear one breakfast/lunch/dinner slot.
-planRoutes.put('/', asyncHandler(async (req, res) => {
-  res.json(await planService.setSlot(req.space.id, req.body));
+// Add one dish to a breakfast/lunch/dinner slot (up to planService.MAX_DISHES_PER_SLOT).
+planRoutes.post('/', asyncHandler(async (req, res) => {
+  res.json(await planService.addToSlot(req.space.id, req.body));
+}));
+
+// Remove one dish from a slot, or the whole slot when dish_id is omitted.
+planRoutes.delete('/', asyncHandler(async (req, res) => {
+  res.json(await planService.removeFromSlot(req.space.id, req.body));
 }));

@@ -7,6 +7,7 @@ import { DishService } from '../core/dish.service';
 import { Dish, PlanEntry, Slot } from '../core/models';
 
 const SLOTS: Slot[] = ['breakfast', 'lunch', 'dinner'];
+const MAX_DISHES_PER_SLOT = 3; // keep in sync with planService.MAX_DISHES_PER_SLOT
 
 function ymd(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -48,11 +49,11 @@ function addDays(d: Date, n: number): Date {
           <span class="date">{{ day.label }}</span>
         </div>
         @for (slot of slots; track slot) {
-          <button class="slot" [class.filled]="entryFor(day.key, slot)"
+          <button class="slot" [class.filled]="entriesFor(day.key, slot).length"
                   (click)="openPicker(day.key, slot)">
             <span class="slot-name">{{ slot }}</span>
-            @if (entryFor(day.key, slot); as e) {
-              <span class="slot-val">{{ e.dish_name }}</span>
+            @if (entriesFor(day.key, slot).length) {
+              <span class="slot-val">{{ dishNamesFor(day.key, slot) }}</span>
             } @else {
               <span class="slot-val is-empty">+ add</span>
             }
@@ -66,12 +67,22 @@ function addDays(d: Date, n: number): Date {
         <div class="sheet" (click)="$event.stopPropagation()">
           <h3>{{ p.slot | titlecase }} · {{ p.dateLabel }}</h3>
 
-          @if (entryFor(p.date, p.slot)) {
+          @if (entriesFor(p.date, p.slot).length) {
+            <div style="margin-bottom:var(--space-3)">
+              @for (e of entriesFor(p.date, p.slot); track e.id) {
+                <div class="picker-item">
+                  <span class="pi-name">{{ e.dish_name }}</span>
+                  <button class="btn small danger" (click)="remove(p.date, p.slot, e.dish_id)">Remove</button>
+                </div>
+              }
+            </div>
             <button class="btn danger" style="width:100%;margin-bottom:var(--space-3)"
-                    (click)="clear(p.date, p.slot)">Clear this meal</button>
+                    (click)="clear(p.date, p.slot)">Clear all</button>
           }
 
-          @if (dishes().length) {
+          @if (slotFull(p.date, p.slot)) {
+            <p class="empty">This slot already has {{ maxDishesPerSlot }} dishes — remove one to add another.</p>
+          } @else if (dishes().length) {
             <input placeholder="Search dishes…"
                    [ngModel]="pickerSearch()" (ngModelChange)="pickerSearch.set($event)" />
             <div style="margin-top:var(--space-2)">
@@ -102,6 +113,7 @@ export class CalendarComponent {
   private dishSvc = inject(DishService);
 
   slots = SLOTS;
+  maxDishesPerSlot = MAX_DISHES_PER_SLOT;
   weekStart = signal<Date>(startOfWeek(new Date()));
   plan = signal<PlanEntry[]>([]);
   dishes = signal<Dish[]>([]);
@@ -132,14 +144,22 @@ export class CalendarComponent {
   });
 
   private planMap = computed(() => {
-    const m = new Map<string, PlanEntry>();
-    for (const e of this.plan()) m.set(`${e.date}|${e.slot}`, e);
+    const m = new Map<string, PlanEntry[]>();
+    for (const e of this.plan()) {
+      const key = `${e.date}|${e.slot}`;
+      const list = m.get(key);
+      if (list) list.push(e);
+      else m.set(key, [e]);
+    }
     return m;
   });
 
+  // Dishes matching the search, excluding ones already assigned to the open slot.
   pickerResults = computed(() => {
     const q = this.pickerSearch().trim().toLowerCase();
-    const all = this.dishes();
+    const p = this.picker();
+    const assigned = p ? new Set(this.entriesFor(p.date, p.slot).map((e) => e.dish_id)) : new Set<number>();
+    const all = this.dishes().filter((d) => !assigned.has(d.id));
     return q ? all.filter((d) => d.name.toLowerCase().includes(q)) : all;
   });
 
@@ -151,8 +171,16 @@ export class CalendarComponent {
     });
   }
 
-  entryFor(date: string, slot: Slot): PlanEntry | undefined {
-    return this.planMap().get(`${date}|${slot}`);
+  entriesFor(date: string, slot: Slot): PlanEntry[] {
+    return this.planMap().get(`${date}|${slot}`) ?? [];
+  }
+
+  dishNamesFor(date: string, slot: Slot): string {
+    return this.entriesFor(date, slot).map((e) => e.dish_name).join(', ');
+  }
+
+  slotFull(date: string, slot: Slot): boolean {
+    return this.entriesFor(date, slot).length >= MAX_DISHES_PER_SLOT;
   }
 
   private async reload(spaceId: number) {
@@ -187,15 +215,21 @@ export class CalendarComponent {
   async choose(date: string, slot: Slot, d: Dish) {
     const id = this.space.activeId();
     if (id == null) return;
-    await this.planSvc.setSlot(id, date, slot, d.id);
-    this.closePicker();
+    await this.planSvc.addToSlot(id, date, slot, d.id);
+    this.plan.set(await this.planSvc.list(id));
+  }
+
+  async remove(date: string, slot: Slot, dishId: number) {
+    const id = this.space.activeId();
+    if (id == null) return;
+    await this.planSvc.removeFromSlot(id, date, slot, dishId);
     this.plan.set(await this.planSvc.list(id));
   }
 
   async clear(date: string, slot: Slot) {
     const id = this.space.activeId();
     if (id == null) return;
-    await this.planSvc.setSlot(id, date, slot, null);
+    await this.planSvc.clearSlot(id, date, slot);
     this.closePicker();
     this.plan.set(await this.planSvc.list(id));
   }

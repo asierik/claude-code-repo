@@ -11,7 +11,15 @@ export class PlanService {
     return plan;
   }
 
-  setSlot(spaceId: number, date: string, slot: Slot, dishId: number | null) {
-    return this.api.put(`/spaces/${spaceId}/plan`, { date, slot, dish_id: dishId });
+  addToSlot(spaceId: number, date: string, slot: Slot, dishId: number) {
+    return this.api.post(`/spaces/${spaceId}/plan`, { date, slot, dish_id: dishId });
+  }
+
+  removeFromSlot(spaceId: number, date: string, slot: Slot, dishId: number) {
+    return this.api.delete(`/spaces/${spaceId}/plan`, { date, slot, dish_id: dishId });
+  }
+
+  clearSlot(spaceId: number, date: string, slot: Slot) {
+    return this.api.delete(`/spaces/${spaceId}/plan`, { date, slot, dish_id: null });
   }
 }
