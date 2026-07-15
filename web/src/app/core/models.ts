@@ -34,4 +34,6 @@ export interface GroceryItem {
   amounts: string[];
   from: string[];
   checked: boolean;
+  custom?: boolean;
+  id?: number;
 }

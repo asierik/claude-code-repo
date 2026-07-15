@@ -58,5 +58,14 @@ CREATE TABLE IF NOT EXISTS grocery_checked (
   item_key TEXT NOT NULL,
   PRIMARY KEY (space_id, item_key)
 );
+
+-- Freeform items added directly to the grocery list (not tied to any dish).
+CREATE TABLE IF NOT EXISTS grocery_custom_items (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id   INTEGER NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
   `);
 }

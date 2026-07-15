@@ -14,4 +14,12 @@ export class GroceryService {
   setChecked(spaceId: number, itemKey: string, checked: boolean) {
     return this.api.post(`/spaces/${spaceId}/grocery/check`, { item_key: itemKey, checked });
   }
+
+  addCustom(spaceId: number, name: string) {
+    return this.api.post<{ item: GroceryItem }>(`/spaces/${spaceId}/grocery/custom`, { name });
+  }
+
+  removeCustom(spaceId: number, id: number) {
+    return this.api.delete(`/spaces/${spaceId}/grocery/custom/${id}`);
+  }
 }
