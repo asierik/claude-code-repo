@@ -12,7 +12,7 @@ export class ApiService {
   get<T>(path: string) { return this.run<T>(this.http.get<T>('/api' + path)); }
   post<T>(path: string, body: unknown) { return this.run<T>(this.http.post<T>('/api' + path, body)); }
   put<T>(path: string, body: unknown) { return this.run<T>(this.http.put<T>('/api' + path, body)); }
-  delete<T>(path: string) { return this.run<T>(this.http.delete<T>('/api' + path)); }
+  delete<T>(path: string, body?: unknown) { return this.run<T>(this.http.delete<T>('/api' + path, { body })); }
 
   private async run<T>(obs: Parameters<typeof firstValueFrom<T>>[0]): Promise<T> {
     try {

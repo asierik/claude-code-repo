@@ -22,6 +22,7 @@ export interface Dish {
 export type Slot = 'breakfast' | 'lunch' | 'dinner';
 
 export interface PlanEntry {
+  id: number;
   date: string;        // YYYY-MM-DD
   slot: Slot;
   dish_id: number;

@@ -19,7 +19,8 @@ The original product spec is in `specs.txt`.
   cooking instructions** (that's why it's "dish", not "recipe"; see §7). Create/
   edit/delete, filter by text (name or ingredient) or by tag.
 - **Calendar**: week view; each day has 3 optional slots — breakfast / lunch /
-  dinner — and you assign one dish per slot.
+  dinner — and you assign up to `planService.MAX_DISHES_PER_SLOT` (currently 3)
+  dishes per slot, no repeats within a slot.
 - **Grocery list**: auto-aggregated from the ingredients of every meal planned
   **from today onward**. Tick items off (persisted per space; checked items sink
   to the bottom).
@@ -135,7 +136,9 @@ sessions(token PK, user_id, created_at)
 spaces(id, name, owner_id, created_at)
 space_members(space_id, user_id, role)   role = 'owner' | 'member'   PK(space_id,user_id)
 dishes(id, space_id, name, ingredients JSON, tags JSON, created_by, created_at)
-plan_entries(id, space_id, date 'YYYY-MM-DD', slot, dish_id)   UNIQUE(space_id,date,slot)
+plan_entries(id, space_id, date 'YYYY-MM-DD', slot, dish_id)   UNIQUE(space_id,date,slot,dish_id)
+  -- a slot can hold several rows (several dishes); duplicate dish in one slot is rejected by the UNIQUE constraint,
+  -- and planService additionally caps it at MAX_DISHES_PER_SLOT (3)
 grocery_checked(space_id, item_key)   PK(space_id,item_key)   item_key = lowercased ingredient name
 grocery_custom_items(id, space_id, name, created_by, created_at)   freeform items not tied to a dish
 ```
@@ -198,8 +201,9 @@ migration system.
 | POST | `/spaces/:spaceId/dishes` | `{name, ingredients:[{name,amount}], tags:[]}` |
 | PUT  | `/spaces/:spaceId/dishes/:did` | |
 | DELETE | `/spaces/:spaceId/dishes/:did` | |
-| GET  | `/spaces/:spaceId/plan` | all plan entries (with `dish_name`) |
-| PUT  | `/spaces/:spaceId/plan` | `{date, slot, dish_id}`; `dish_id:null` clears the slot |
+| GET  | `/spaces/:spaceId/plan` | all plan entries (with `dish_name`); a slot may have multiple rows |
+| POST | `/spaces/:spaceId/plan` | `{date, slot, dish_id}` — adds one dish to a slot (max `MAX_DISHES_PER_SLOT`, no duplicates) |
+| DELETE | `/spaces/:spaceId/plan` | `{date, slot, dish_id}` — removes one dish; `dish_id:null`/omitted clears the whole slot |
 | GET  | `/spaces/:spaceId/grocery` | aggregated list for meals dated today→future |
 | POST | `/spaces/:spaceId/grocery/check` | `{item_key, checked}` |
 
