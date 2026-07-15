@@ -66,6 +66,7 @@ the browser. Backend changes just need a `node server.js` restart.
 | Runtime  | Node 26 | uses `@libsql/client` for Turso (HTTP/WS/file) with an optional local file fallback |
 | Backend  | Express 4.22 (ESM, `"type":"module"`) | layered, see §4 |
 | DB       | Turso / libSQL via `@libsql/client` (remote) with optional local `file:` fallback | client exposes async `execute` / `migrate` / `batch` APIs |
+| Migrations | **Umzug** (`src/db/migrator.js`) | versioned, tracked in a `_migrations` table; see §5 |
 | Frontend | Angular 22 standalone + **signals** | no NgModules, no router (signal-based tab switch) |
 | Auth     | `node:crypto` scrypt + random session token cookie | no external auth lib |
 | Deploy   | Render free-tier Node web service | see §9 |
@@ -84,9 +85,9 @@ routes/        HTTP only: parse req, call a service, send res. NO SQL.
        └─ repositories/   the ONLY files that touch SQL (now use async helpers over @libsql/client).
 middleware/    requireAuth (session→req.user), requireSpace (access control→req.space/req.role), errorHandler
 util/          errors (AppError + helpers), password (scrypt), cookies (parse/set/clear), asyncHandler (wrap async Express handlers)
-db/            connection (the single libSQL/Turso Client), schema (async migrate() using executeMultiple / migrate)
+db/            connection (the single libSQL/Turso Client), migrator + migrations/ (Umzug, see §5), storage (migration-tracking table)
 app.js         builds the Express app, mounts routers, serves web/dist, SPA fallback, errorHandler last
-server.js      entry: migrate() then listen()
+server.js      entry: migrateToLatest() then listen()
 ```
 
 - Services throw `AppError(status, message)` (see `src/util/errors.js`). Handlers
@@ -126,7 +127,7 @@ grocery/          checklist
 
 ---
 
-## 5. Data model (`src/db/schema.js`)
+## 5. Data model & migrations (`src/db/migrations/`)
 
 ```
 users(id, username UNIQUE, pass_hash, salt, created_at)
@@ -136,12 +137,48 @@ space_members(space_id, user_id, role)   role = 'owner' | 'member'   PK(space_id
 dishes(id, space_id, name, ingredients JSON, tags JSON, created_by, created_at)
 plan_entries(id, space_id, date 'YYYY-MM-DD', slot, dish_id)   UNIQUE(space_id,date,slot)
 grocery_checked(space_id, item_key)   PK(space_id,item_key)   item_key = lowercased ingredient name
+grocery_custom_items(id, space_id, name, created_by, created_at)   freeform items not tied to a dish
 ```
 
 - `dishes.ingredients` is JSON `[{name, amount}]`; `dishes.tags` is JSON `["quick"]`.
   The **repository** parses/stringifies these — services/routes see real arrays.
-- **No migration system.** Schema is `CREATE TABLE IF NOT EXISTS`. If you change a
-  column/table, **delete the dev DB** (`rm mealmate.db*`) so it recreates.
+
+### Migrations — **Umzug** (chosen 2026-07-15 to stop risking data loss on schema changes)
+
+Schema changes are **no longer** made by editing a `CREATE TABLE IF NOT EXISTS`
+blob and deleting the dev DB. There's a real, versioned migration system now,
+because the app has real data (Turso) that a "just reset the DB" workflow would
+destroy.
+
+- `src/db/migrations/*.js` — one file per schema change, applied in filename
+  order. `00000000000000-init.js` is the baseline (the old schema, unchanged,
+  still just `CREATE TABLE IF NOT EXISTS` — safe no-op on any DB that already
+  has these tables, which is why upgrading to this system didn't require
+  touching the existing Turso data).
+- `src/db/migrator.js` — the Umzug instance + `migrateToLatest()`. `server.js`
+  calls `migrateToLatest()` at startup (replaces the old `migrate()` call), so
+  every boot (locally or on Render) applies whatever's pending and nothing more.
+- `src/db/storage.js` — tracks which migrations have run in a `_migrations`
+  table **inside the same libSQL/Turso DB**, so the record travels with the
+  data instead of depending on which machine last ran a migration.
+- **No `down` migrations, by policy.** SQLite/libSQL rollbacks (e.g. dropping a
+  column) usually mean rebuilding the whole table, which is itself a
+  data-loss risk. To undo a change, write a new forward migration instead.
+
+**Making a schema change:**
+
+```bash
+npm run migrate create -- --name add-foo-column.js   # scaffolds a new file in src/db/migrations/
+# edit the generated file: write raw SQL against `executeMultiple`/`execute` from the `context` param
+npm run migrate up                                    # applies it locally
+npm run migrate pending                                # see what hasn't run yet
+npm run migrate executed                               # see what has
+```
+
+Deploying just means restarting the app (`migrateToLatest()` runs at startup)
+— no manual step needed on Render. **Never edit an already-committed migration
+file once it's shipped**; add a new one instead, the same rule as any other
+migration system.
 
 ---
 
@@ -247,7 +284,6 @@ anymore — the earlier Cloudflare quick-tunnel setup is retired.
 - No quantity/unit math in the grocery list (free-text amounts only).
 - No live multi-device sync — collaborators see changes on **reload/poll**, not in
   real time. Add SSE/WebSocket if needed.
-- No migration system; schema changes need a DB reset.
  - Cookies are `SameSite=Lax`. For real HTTPS deployments the app now sets `Secure` when `NODE_ENV=production` or `COOKIE_SECURE=true` (see `src/util/cookies.js`). This keeps local dev on `http://localhost` working while enforcing secure-only cookies in production.
 - No automated test suite — verification is manual via `playwright-cli`.
 - Calendar is week-only (no month view / drag-and-drop).
@@ -258,9 +294,9 @@ anymore — the earlier Cloudflare quick-tunnel setup is retired.
 
 ## 11. TL;DR for an agent making a change
 
-1. Backend change → edit the right layer (route/service/repo), restart `node server.js` (the server now awaits async `migrate()` at startup).
+1. Backend change → edit the right layer (route/service/repo), restart `node server.js` (the server now awaits async `migrateToLatest()` at startup).
 2. Env: set `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` for Turso or `MEALMATE_DB` for local file; the app loads `.env` via `dotenv`.
 3. Frontend change → edit `web/src/...`, **`cd web && npx ng build`**, reload.
-4. Schema change → update `src/db/schema.js` (use `executeMultiple`/`migrate` when targeting remote libSQL), `rm mealmate.db*` for a fresh local DB, restart.
-4. **Verify in a real browser with `playwright-cli` before claiming done** (CLAUDE.md).
-5. Respect §7 decisions and the design-token rule (§7).
+4. Schema change → `npm run migrate create -- --name <thing>.js`, edit the generated file under `src/db/migrations/`, `npm run migrate up` to apply locally. **Never edit a committed migration file** — add a new one (see §5). No more DB resets for schema changes.
+5. **Verify in a real browser with `playwright-cli` before claiming done** (CLAUDE.md).
+6. Respect §7 decisions and the design-token rule (§7).
