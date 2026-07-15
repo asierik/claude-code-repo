@@ -1,6 +1,11 @@
 import { planRepository } from '../repositories/planRepository.js';
 import { groceryRepository } from '../repositories/groceryRepository.js';
-import { badRequest } from '../util/errors.js';
+import { badRequest, notFound } from '../util/errors.js';
+
+// Custom items reuse grocery_checked for their checked state, keyed by this prefix.
+function customKey(id) {
+  return `custom-${id}`;
+}
 
 // Local YYYY-MM-DD for a timestamp, to compare against plan_entries.date.
 function localYmd(ms) {
@@ -31,6 +36,13 @@ export const groceryService = {
     }
 
     const checked = new Set(await groceryRepository.checkedKeys(spaceId));
+
+    const custom = await groceryRepository.listCustomItems(spaceId);
+    for (const c of custom) {
+      const key = customKey(c.id);
+      items.set(key, { key, name: c.name, amounts: [], from: [], custom: true, id: c.id });
+    }
+
     return [...items.values()]
       .map((i) => ({
         key: i.key,
@@ -38,6 +50,8 @@ export const groceryService = {
         amounts: i.amounts,
         from: [...i.from],
         checked: checked.has(i.key),
+        custom: !!i.custom,
+        ...(i.custom ? { id: i.id } : {}),
       }))
       // Unchecked first, then alphabetical.
       .sort((a, b) => Number(a.checked) - Number(b.checked) || a.name.localeCompare(b.name));
@@ -48,5 +62,18 @@ export const groceryService = {
     if (!key) throw badRequest('item_key required');
     if (checked) await groceryRepository.check(spaceId, key);
     else await groceryRepository.uncheck(spaceId, key);
+  },
+
+  async addCustomItem(spaceId, userId, rawName) {
+    const name = String(rawName || '').trim();
+    if (!name) throw badRequest('Item name required');
+    const item = await groceryRepository.addCustomItem(spaceId, userId, name, Date.now());
+    return { key: customKey(item.id), id: item.id, name: item.name, amounts: [], from: [], checked: false, custom: true };
+  },
+
+  async removeCustomItem(spaceId, id) {
+    if (!Number.isFinite(id)) throw notFound('Item not found');
+    await groceryRepository.removeCustomItem(spaceId, id);
+    await groceryRepository.uncheck(spaceId, customKey(id));
   },
 };
