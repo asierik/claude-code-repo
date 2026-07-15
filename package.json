@@ -7,13 +7,18 @@
   "scripts": {
     "build": "cd web && npm ci --include=dev && npx ng build",
     "start": "node server.js",
-    "migrate": "node src/db/migrator.js"
+    "migrate": "node src/db/migrator.js",
+    "test": "node --test src/**/*.test.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "umzug": "^3.8.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
   },
   "engines": {
     "node": "24.15.0"

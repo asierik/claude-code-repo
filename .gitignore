@@ -70,3 +70,8 @@ src/environments/environment.prod.ts
 
 # Playwright CLI
 .playwright-cli/
+
+# Playwright test output
+/test-results/
+/playwright-report/
+/blob-report/

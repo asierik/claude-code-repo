@@ -68,6 +68,7 @@ the browser. Backend changes just need a `node server.js` restart.
 | Backend  | Express 4.22 (ESM, `"type":"module"`) | layered, see §4 |
 | DB       | Turso / libSQL via `@libsql/client` (remote) with optional local `file:` fallback | client exposes async `execute` / `migrate` / `batch` APIs |
 | Migrations | **Umzug** (`src/db/migrator.js`) | versioned, tracked in a `_migrations` table; see §5 |
+| Testing | `node:test` (backend units, `npm test`) + `@playwright/test` (e2e, `npm run test:e2e`) | see §8 |
 | Frontend | Angular 22 standalone + **signals** | no NgModules, no router (signal-based tab switch) |
 | Auth     | `node:crypto` scrypt + random session token cookie | no external auth lib |
 | Deploy   | Render free-tier Node web service | see §9 |
@@ -235,8 +236,29 @@ session and membership.
 
 ---
 
-## 8. Testing — browser e2e via `playwright-cli` (required by CLAUDE.md)
+## 8. Testing
 
+There are now two automated suites, plus manual browser exploration:
+
+- **Backend unit tests** — `node:test` (zero extra dependencies), run with
+  `npm test`. Colocated with the code (`src/services/fooService.js` →
+  `src/services/fooService.test.js`), auto-discovered by
+  `node --test src/**/*.test.js`. Favor testing services (pure-ish business
+  logic/validation) over routes or repositories.
+- **E2e tests** — `@playwright/test` (a devDependency, separate from the
+  `playwright-cli` tool below), run with `npm run test:e2e`. Specs live in
+  `e2e/*.spec.js`; config in `playwright.config.js` auto-starts
+  `node server.js` if nothing's already on :3000. See `e2e/auth.spec.js` for
+  the template (register a throwaway `e2e-${Date.now()}` user, drive the UI,
+  assert on what's visible).
+- **A `test-writer` subagent** (`.claude/agents/test-writer.md`) is spawned
+  automatically after implementing a new feature (see `CLAUDE.md`) to write
+  both kinds of tests for it. Both suites must pass before a feature is
+  considered done.
+
+**Manual/exploratory testing** still goes through `playwright-cli` (required
+by CLAUDE.md for hands-on verification, UI review, or debugging — it drives
+a real browser interactively rather than running a written spec file).
 Start the server, then drive it headed: `playwright-cli open --headed http://localhost:3000/`.
 Smoke-test path: register → add a dish (2 ingredients + tags) → assign to a
 today/future dinner slot → check Grocery shows the ingredients → tick one off →
@@ -289,7 +311,9 @@ anymore — the earlier Cloudflare quick-tunnel setup is retired.
 - No live multi-device sync — collaborators see changes on **reload/poll**, not in
   real time. Add SSE/WebSocket if needed.
  - Cookies are `SameSite=Lax`. For real HTTPS deployments the app now sets `Secure` when `NODE_ENV=production` or `COOKIE_SECURE=true` (see `src/util/cookies.js`). This keeps local dev on `http://localhost` working while enforcing secure-only cookies in production.
-- No automated test suite — verification is manual via `playwright-cli`.
+- Automated coverage is deliberately thin (one unit spec, one e2e smoke spec
+  as of this writing) — it grows feature-by-feature via the `test-writer`
+  subagent, not as an upfront suite.
 - Calendar is week-only (no month view / drag-and-drop).
 - A minimal pass-through service worker (`web/public/sw.js`) exists only to satisfy
   installability; it does **not** cache or enable offline use.
@@ -303,4 +327,7 @@ anymore — the earlier Cloudflare quick-tunnel setup is retired.
 3. Frontend change → edit `web/src/...`, **`cd web && npx ng build`**, reload.
 4. Schema change → `npm run migrate create -- --name <thing>.js`, edit the generated file under `src/db/migrations/`, `npm run migrate up` to apply locally. **Never edit a committed migration file** — add a new one (see §5). No more DB resets for schema changes.
 5. **Verify in a real browser with `playwright-cli` before claiming done** (CLAUDE.md).
-6. Respect §7 decisions and the design-token rule (§7).
+6. New feature → the `test-writer` subagent runs automatically afterward to add
+   `node:test`/`@playwright/test` coverage (`npm test`, `npm run test:e2e`); wait
+   for both to pass before calling it done (CLAUDE.md).
+7. Respect §7 decisions and the design-token rule (§7).
