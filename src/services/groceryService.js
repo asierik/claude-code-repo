@@ -7,6 +7,12 @@ function customKey(id) {
   return `custom-${id}`;
 }
 
+// Normalizes an ingredient name into the key grocery_checked rows/list items
+// are matched by (case-insensitive, so items still merge across dishes).
+export function ingredientKey(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
 // Local YYYY-MM-DD for a timestamp, to compare against plan_entries.date.
 function localYmd(ms) {
   const d = new Date(ms);
@@ -26,7 +32,7 @@ export const groceryService = {
     for (const e of entries) {
       if (e.date < today) continue; // keep everything from today onward
       for (const ing of e.ingredients) {
-        const key = ing.name.trim().toLowerCase();
+        const key = ingredientKey(ing.name);
         if (!key) continue;
         if (!items.has(key)) items.set(key, { key, name: ing.name.trim(), amounts: [], from: new Set() });
         const item = items.get(key);
@@ -58,7 +64,7 @@ export const groceryService = {
   },
 
   async setChecked(spaceId, rawKey, checked) {
-    const key = String(rawKey || '').trim().toLowerCase();
+    const key = ingredientKey(rawKey);
     if (!key) throw badRequest('item_key required');
     if (checked) await groceryRepository.check(spaceId, key);
     else await groceryRepository.uncheck(spaceId, key);
