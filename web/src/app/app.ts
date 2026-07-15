@@ -13,6 +13,8 @@ import { ShellComponent } from './shell/shell.component';
       } @else {
         <app-auth />
       }
+    } @else {
+      <div class="spinner-page"><div class="spinner"></div></div>
     }
   `,
 })

@@ -60,6 +60,8 @@
   --sheet-max: 520px;
   --auth-max: 360px;
   --view-pad-bottom: 96px; /* clears the fixed tab bar */
+  --spinner-size: 40px;
+  --spinner-size-sm: 20px;
 
   /* Elevation + stacking */
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.06);
@@ -283,3 +285,37 @@ input:focus, select:focus, textarea:focus { outline: var(--focus-ring); border-c
 .mt-4 { margin-top: var(--space-4); }
 .member-row { padding: var(--space-1); }
 .note-ok { color: var(--green); font-weight: 600; }
+
+/* ---------------- Loading: spinner + skeleton ---------------- */
+.spinner {
+  width: var(--spinner-size); height: var(--spinner-size);
+  border: 3px solid var(--green-tint-2); border-top-color: var(--green);
+  border-radius: 50%; animation: spin .7s linear infinite; flex: none;
+}
+.spinner.sm { width: var(--spinner-size-sm); height: var(--spinner-size-sm); border-width: 2px; }
+.spinner-page {
+  min-height: 100vh; display: grid; place-items: center; gap: var(--space-3);
+  background: linear-gradient(160deg, #eaf3ee, var(--bg));
+}
+.spinner-row { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); padding: var(--space-3) 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 25%, var(--card) 50%, var(--line) 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm); color: transparent !important; pointer-events: none;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton-line { display: block; height: var(--text-sm); border-radius: var(--radius-sm); }
+.skeleton-line.lg { height: var(--text-md); }
+.skeleton-line.w-30 { width: 30%; }
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-80 { width: 80%; }
+.skel-checkbox { width: var(--checkbox); height: var(--checkbox); flex: none; margin-top: var(--space-1); border-radius: var(--radius-sm); }
+.slot.skeleton { border-style: solid; border-color: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.6s; }
+  .skeleton { animation: none; }
+}

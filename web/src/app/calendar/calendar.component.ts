@@ -42,24 +42,38 @@ function addDays(d: Date, n: number): Date {
       <span class="spacer"></span>
     </div>
 
-    @for (day of days(); track day.key) {
-      <div class="card day" [class.today]="day.isToday">
-        <div class="day-head">
-          <span class="dow">{{ day.dow }}</span>
-          <span class="date">{{ day.label }}</span>
+    @if (loading()) {
+      @for (i of skeletonDays; track i) {
+        <div class="card day">
+          <div class="day-head">
+            <span class="skeleton skeleton-line w-40"></span>
+            <span class="skeleton skeleton-line w-30"></span>
+          </div>
+          @for (slot of slots; track slot) {
+            <div class="slot skeleton"></div>
+          }
         </div>
-        @for (slot of slots; track slot) {
-          <button class="slot" [class.filled]="entriesFor(day.key, slot).length"
-                  (click)="openPicker(day.key, slot)">
-            <span class="slot-name">{{ slot }}</span>
-            @if (entriesFor(day.key, slot).length) {
-              <span class="slot-val">{{ dishNamesFor(day.key, slot) }}</span>
-            } @else {
-              <span class="slot-val is-empty">+ add</span>
-            }
-          </button>
-        }
-      </div>
+      }
+    } @else {
+      @for (day of days(); track day.key) {
+        <div class="card day" [class.today]="day.isToday">
+          <div class="day-head">
+            <span class="dow">{{ day.dow }}</span>
+            <span class="date">{{ day.label }}</span>
+          </div>
+          @for (slot of slots; track slot) {
+            <button class="slot" [class.filled]="entriesFor(day.key, slot).length"
+                    (click)="openPicker(day.key, slot)">
+              <span class="slot-name">{{ slot }}</span>
+              @if (entriesFor(day.key, slot).length) {
+                <span class="slot-val">{{ dishNamesFor(day.key, slot) }}</span>
+              } @else {
+                <span class="slot-val is-empty">+ add</span>
+              }
+            </button>
+          }
+        </div>
+      }
     }
 
     @if (picker(); as p) {
@@ -114,9 +128,11 @@ export class CalendarComponent {
 
   slots = SLOTS;
   maxDishesPerSlot = MAX_DISHES_PER_SLOT;
+  skeletonDays = Array.from({ length: 7 }, (_, i) => i);
   weekStart = signal<Date>(startOfWeek(new Date()));
   plan = signal<PlanEntry[]>([]);
   dishes = signal<Dish[]>([]);
+  loading = signal(true);
   picker = signal<{ date: string; slot: Slot; dateLabel: string } | null>(null);
   pickerSearch = signal('');
 
@@ -183,7 +199,18 @@ export class CalendarComponent {
     return this.entriesFor(date, slot).length >= MAX_DISHES_PER_SLOT;
   }
 
+  // Full reload (space switch / first mount) — shows the skeleton.
   private async reload(spaceId: number) {
+    this.loading.set(true);
+    try {
+      await this.refresh(spaceId);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // Silent refetch after a mutation — keeps the current week on screen.
+  private async refresh(spaceId: number) {
     const [plan, dishes] = await Promise.all([
       this.planSvc.list(spaceId),
       this.dishSvc.list(spaceId),
