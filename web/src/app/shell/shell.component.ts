@@ -21,10 +21,23 @@ type View = 'calendar' | 'dishes' | 'grocery';
               <option [ngValue]="s.id">{{ s.name }}{{ s.role === 'member' ? ' (shared)' : '' }}</option>
             }
           </select>
+          <button
+            class="icon-btn"
+            (click)="toggleFavourite()"
+            [disabled]="favouriteBusy()"
+            [title]="space.favouriteId() === space.activeId() ? 'Unset favourite space' : 'Set as favourite space'"
+          >{{ space.favouriteId() === space.activeId() ? '★' : '☆' }}</button>
           <button class="icon-btn" (click)="openShare()" title="Share this space">🔗</button>
         </div>
         <button class="icon-btn" (click)="logout()" title="Sign out">⎋</button>
       </header>
+
+      @if (space.favouriteStale()) {
+        <p class="small note-stale">
+          Your favourite space is no longer available, so it wasn't auto-selected.
+          <button class="link-btn" (click)="space.favouriteStale.set(false)">Dismiss</button>
+        </p>
+      }
 
       <main class="view">
         @switch (view()) {
@@ -93,6 +106,7 @@ export class ShellComponent {
   shareError = signal('');
   members = signal<Member[]>([]);
   busy = signal(false);
+  favouriteBusy = signal(false);
 
   constructor() {
     this.space.load();
@@ -100,6 +114,17 @@ export class ShellComponent {
 
   onSpaceChange(id: number) {
     this.space.setActive(Number(id));
+  }
+
+  async toggleFavourite() {
+    const id = this.space.activeId();
+    if (id == null || this.favouriteBusy()) return;
+    this.favouriteBusy.set(true);
+    try {
+      await this.space.toggleFavourite(id);
+    } finally {
+      this.favouriteBusy.set(false);
+    }
   }
 
   async logout() {
