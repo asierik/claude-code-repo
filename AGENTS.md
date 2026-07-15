@@ -68,7 +68,7 @@ the browser. Backend changes just need a `node server.js` restart.
 | DB       | Turso / libSQL via `@libsql/client` (remote) with optional local `file:` fallback | client exposes async `execute` / `migrate` / `batch` APIs |
 | Frontend | Angular 22 standalone + **signals** | no NgModules, no router (signal-based tab switch) |
 | Auth     | `node:crypto` scrypt + random session token cookie | no external auth lib |
-| Deploy   | Cloudflare quick tunnel (free) | see §9 |
+| Deploy   | Render free-tier Node web service | see §9 |
 
 There is **one** runtime npm dependency on the backend (`express`) plus `@libsql/client`; the code now uses `@libsql/client` for database access and `dotenv` for environment variables. Crypto and cookies remain Node built-ins.
 
@@ -219,23 +219,26 @@ browser — see git history / the layered routes.
 
 ## 9. Deployment (free, no paid hosting)
 
-**Today / workshop (running now):** a **Cloudflare quick tunnel** exposes the
-local server over public HTTPS — free, no account, no card:
+**Now deployed on Render** (free-tier Node web service), not a local tunnel
+anymore — the earlier Cloudflare quick-tunnel setup is retired.
 
-```bash
-node server.js &                                   # local app on :3000
-cloudflared tunnel --url http://localhost:3000     # prints https://<random>.trycloudflare.com
-```
-
-The phone opens that HTTPS URL and can "Add to Home screen" (manifest + `sw.js`
-make it installable). Caveats: the Mac must stay awake with both processes
-running, and the `trycloudflare.com` URL is **random and changes on every
-cloudflared restart**.
-
-**Always-on path (future, still free at small scale):** move the DB to a free
-hosted SQLite (**Turso**/libSQL) — which means swapping the `repositories/` layer
-to a libSQL client — and deploy the Node app to a free tier (Render/Fly). The
-clean repository boundary is what makes that swap localized.
+- Render builds with `npm run build` (installs backend deps, then builds the
+  Angular app under `web/`) and starts with `npm start` (`node server.js`) —
+  the existing `package.json` scripts (see §2) work as-is, no Render-specific
+  config file needed.
+- The DB is **Turso/libSQL** (remote), not a local SQLite file, so the app has
+  no local state to lose on redeploy/restart.
+- Env vars are set in the Render dashboard, not a committed `.env`:
+  `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `NODE_ENV=production` (or
+  `COOKIE_SECURE=true`) so session cookies get `Secure`. `PORT` is supplied by
+  Render itself.
+- The app gets a stable `https://<service-name>.onrender.com` URL (unlike the
+  old tunnel's random URL that changed on every restart) — that's what gets
+  added to the phone home screen (manifest + `sw.js` make it installable).
+- **Free-tier caveat:** the service spins down after inactivity, so the first
+  request after idle time has a noticeable cold-start delay while it spins
+  back up. Nothing to fix — just expect a slow first load when testing after
+  a gap.
 
 ---
 
