@@ -22,27 +22,41 @@ import { Dish, Ingredient } from '../core/models';
       </div>
     }
 
-    @for (d of filtered(); track d.id) {
-      <div class="card dish-card">
-        <div class="row">
-          <h3>{{ d.name }}</h3>
-          <span class="spacer"></span>
-          <button class="btn small" (click)="openEdit(d)">Edit</button>
-          <button class="btn small danger" (click)="remove(d)">✕</button>
-        </div>
-        @if (d.tags.length) {
-          <div>@for (t of d.tags; track t) { <span class="tag">{{ t }}</span> }</div>
-        }
-        @if (d.ingredients.length) {
+    @if (loading()) {
+      @for (i of skeletonRows; track i) {
+        <div class="card dish-card">
+          <div class="row">
+            <span class="skeleton skeleton-line lg w-60"></span>
+          </div>
           <ul class="ing-list">
-            @for (ing of d.ingredients; track $index) {
-              <li>{{ ing.name }}@if (ing.amount) { <span class="muted"> — {{ ing.amount }}</span> }</li>
-            }
+            <li class="skeleton skeleton-line w-40" style="margin-bottom:var(--space-2)"></li>
+            <li class="skeleton skeleton-line w-30"></li>
           </ul>
-        }
-      </div>
-    } @empty {
-      <p class="empty">No dishes yet. Tap ＋ to add your first one.</p>
+        </div>
+      }
+    } @else {
+      @for (d of filtered(); track d.id) {
+        <div class="card dish-card">
+          <div class="row">
+            <h3>{{ d.name }}</h3>
+            <span class="spacer"></span>
+            <button class="btn small" (click)="openEdit(d)">Edit</button>
+            <button class="btn small danger" (click)="remove(d)">✕</button>
+          </div>
+          @if (d.tags.length) {
+            <div>@for (t of d.tags; track t) { <span class="tag">{{ t }}</span> }</div>
+          }
+          @if (d.ingredients.length) {
+            <ul class="ing-list">
+              @for (ing of d.ingredients; track $index) {
+                <li>{{ ing.name }}@if (ing.amount) { <span class="muted"> — {{ ing.amount }}</span> }</li>
+              }
+            </ul>
+          }
+        </div>
+      } @empty {
+        <p class="empty">No dishes yet. Tap ＋ to add your first one.</p>
+      }
     }
 
     <button class="fab" (click)="openNew()" aria-label="Add dish">＋</button>
@@ -92,6 +106,8 @@ export class DishesComponent {
   dishes = signal<Dish[]>([]);
   search = signal('');
   activeTags = signal<string[]>([]);
+  loading = signal(true);
+  skeletonRows = Array.from({ length: 3 }, (_, i) => i);
 
   formOpen = signal(false);
   editingId = signal<number | null>(null);
@@ -127,7 +143,18 @@ export class DishesComponent {
     });
   }
 
+  // Full reload (space switch / first mount) — shows the skeleton.
   private async reload(spaceId: number) {
+    this.loading.set(true);
+    try {
+      await this.refresh(spaceId);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // Silent refetch after a mutation — keeps the current list on screen.
+  private async refresh(spaceId: number) {
     this.dishes.set(await this.dishSvc.list(spaceId));
   }
 
@@ -185,7 +212,7 @@ export class DishesComponent {
       if (editId) await this.dishSvc.update(id, editId, body);
       else await this.dishSvc.create(id, body);
       this.closeForm();
-      await this.reload(id);
+      await this.refresh(id);
     } catch (e) {
       this.formError.set(e instanceof Error ? e.message : 'Could not save');
     } finally {
@@ -197,6 +224,6 @@ export class DishesComponent {
     const id = this.space.activeId();
     if (id == null) return;
     await this.dishSvc.remove(id, d.id);
-    await this.reload(id);
+    await this.refresh(id);
   }
 }

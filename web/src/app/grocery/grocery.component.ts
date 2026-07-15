@@ -14,20 +14,29 @@ import { GroceryItem } from '../core/models';
     </p>
 
     <div class="card">
-      @for (item of items(); track item.key) {
-        <label class="gitem" [class.done]="item.checked">
-          <input type="checkbox" [checked]="item.checked" (change)="toggle(item)" />
-          <span class="g-main">
-            <span class="g-name">{{ item.name }}&nbsp;</span>
-            @if (item.amounts.length) { <span class="muted"> · {{ item.amounts.join(', ') }}</span> }
-            @if (item.from.length) { <span class="g-sub">for {{ item.from.join(', ') }}</span> }
-          </span>
-          @if (item.custom) {
-            <button class="btn small danger" (click)="remove(item, $event)">✕</button>
-          }
-        </label>
-      } @empty {
-        <p class="empty">Nothing to buy yet — plan some meals in the Calendar, or add your own item.</p>
+      @if (loading()) {
+        @for (i of skeletonRows; track i) {
+          <div class="gitem">
+            <div class="skeleton skel-checkbox"></div>
+            <span class="g-main"><span class="skeleton skeleton-line w-60"></span></span>
+          </div>
+        }
+      } @else {
+        @for (item of items(); track item.key) {
+          <label class="gitem" [class.done]="item.checked">
+            <input type="checkbox" [checked]="item.checked" (change)="toggle(item)" />
+            <span class="g-main">
+              <span class="g-name">{{ item.name }}&nbsp;</span>
+              @if (item.amounts.length) { <span class="muted"> · {{ item.amounts.join(', ') }}</span> }
+              @if (item.from.length) { <span class="g-sub">for {{ item.from.join(', ') }}</span> }
+            </span>
+            @if (item.custom) {
+              <button class="btn small danger" (click)="remove(item, $event)">✕</button>
+            }
+          </label>
+        } @empty {
+          <p class="empty">Nothing to buy yet — plan some meals in the Calendar, or add your own item.</p>
+        }
       }
     </div>
     <button class="fab" (click)="openAdd()" aria-label="Add item">＋</button>
@@ -58,6 +67,8 @@ export class GroceryComponent {
   private grocerySvc = inject(GroceryService);
 
   items = signal<GroceryItem[]>([]);
+  loading = signal(true);
+  skeletonRows = Array.from({ length: 4 }, (_, i) => i);
 
   formOpen = signal(false);
   fName = '';
@@ -71,7 +82,18 @@ export class GroceryComponent {
     });
   }
 
+  // Full reload (space switch / first mount) — shows the skeleton.
   private async reload(spaceId: number) {
+    this.loading.set(true);
+    try {
+      await this.refresh(spaceId);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // Silent refetch after a mutation — keeps the current list on screen.
+  private async refresh(spaceId: number) {
     this.items.set(await this.grocerySvc.list(spaceId));
   }
 
@@ -79,7 +101,7 @@ export class GroceryComponent {
     const id = this.space.activeId();
     if (id == null) return;
     await this.grocerySvc.setChecked(id, item.key, !item.checked);
-    await this.reload(id);
+    await this.refresh(id);
   }
 
   openAdd() {
@@ -105,7 +127,7 @@ export class GroceryComponent {
     try {
       await this.grocerySvc.addCustom(id, name);
       this.closeForm();
-      await this.reload(id);
+      await this.refresh(id);
     } catch (e) {
       this.formError.set(e instanceof Error ? e.message : 'Could not add item');
     } finally {
@@ -119,6 +141,6 @@ export class GroceryComponent {
     const id = this.space.activeId();
     if (id == null || item.id == null) return;
     await this.grocerySvc.removeCustom(id, item.id);
-    await this.reload(id);
+    await this.refresh(id);
   }
 }

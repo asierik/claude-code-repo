@@ -83,11 +83,15 @@ type View = 'calendar' | 'dishes' | 'grocery';
           }
 
           <h3 class="mt-4">People with access</h3>
-          @for (m of members(); track m.username) {
-            <div class="row member-row">
-              <span>{{ m.username }}</span><span class="spacer"></span>
-              <span class="tag">{{ m.role }}</span>
-            </div>
+          @if (membersLoading()) {
+            <div class="spinner-row"><div class="spinner sm"></div> Loading…</div>
+          } @else {
+            @for (m of members(); track m.username) {
+              <div class="row member-row">
+                <span>{{ m.username }}</span><span class="spacer"></span>
+                <span class="tag">{{ m.role }}</span>
+              </div>
+            }
           }
         </div>
       </div>
@@ -105,6 +109,7 @@ export class ShellComponent {
   shareMsg = signal('');
   shareError = signal('');
   members = signal<Member[]>([]);
+  membersLoading = signal(false);
   busy = signal(false);
   favouriteBusy = signal(false);
 
@@ -145,7 +150,13 @@ export class ShellComponent {
 
   private async loadMembers() {
     const id = this.space.activeId();
-    if (id != null) this.members.set(await this.space.members(id));
+    if (id == null) return;
+    this.membersLoading.set(true);
+    try {
+      this.members.set(await this.space.members(id));
+    } finally {
+      this.membersLoading.set(false);
+    }
   }
 
   async doShare() {
