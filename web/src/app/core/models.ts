@@ -17,6 +17,7 @@ export interface Dish {
   name: string;
   ingredients: Ingredient[];
   tags: string[];
+  notes: string;
 }
 
 export type Slot = 'breakfast' | 'lunch' | 'dinner';
