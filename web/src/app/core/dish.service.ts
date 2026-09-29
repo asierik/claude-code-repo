@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { Dish } from './models';
 
-export type DishInput = Pick<Dish, 'name' | 'ingredients' | 'tags'>;
+export type DishInput = Pick<Dish, 'name' | 'ingredients' | 'tags' | 'notes'>;
 
 @Injectable({ providedIn: 'root' })
 export class DishService {

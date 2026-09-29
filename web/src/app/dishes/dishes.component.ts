@@ -88,6 +88,11 @@ import { Dish, Ingredient } from '../core/models';
             <input placeholder="quick, veggie" [(ngModel)]="fTags" />
           </div>
 
+          <div class="field">
+            <label>Notes</label>
+            <textarea placeholder="Any notes about this dish…" rows="3" [(ngModel)]="fNotes"></textarea>
+          </div>
+
           @if (formError()) { <p class="error">{{ formError() }}</p> }
 
           <div class="sheet-actions">
@@ -114,6 +119,7 @@ export class DishesComponent {
   fName = '';
   fIngredients = signal<Ingredient[]>([]);
   fTags = '';
+  fNotes = '';
   formError = signal('');
   busy = signal(false);
 
@@ -168,6 +174,7 @@ export class DishesComponent {
     this.fName = '';
     this.fIngredients.set([{ name: '', amount: '' }]);
     this.fTags = '';
+    this.fNotes = '';
     this.formError.set('');
     this.formOpen.set(true);
   }
@@ -177,6 +184,7 @@ export class DishesComponent {
     this.fName = d.name;
     this.fIngredients.set(d.ingredients.length ? d.ingredients.map((i) => ({ ...i })) : [{ name: '', amount: '' }]);
     this.fTags = d.tags.join(', ');
+    this.fNotes = d.notes;
     this.formError.set('');
     this.formOpen.set(true);
   }
@@ -206,6 +214,7 @@ export class DishesComponent {
       name,
       ingredients: this.fIngredients().filter((i) => i.name.trim()),
       tags: this.fTags.split(',').map((t) => t.trim()).filter(Boolean),
+      notes: this.fNotes.trim(),
     };
     try {
       const editId = this.editingId();

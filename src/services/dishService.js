@@ -24,7 +24,7 @@ export const dishService = {
     return await dishRepository.create(
       spaceId,
       userId,
-      { name, ingredients: cleanIngredients(body.ingredients), tags: cleanTags(body.tags) },
+      { name, ingredients: cleanIngredients(body.ingredients), tags: cleanTags(body.tags), notes: String(body.notes || '').trim() },
       Date.now()
     );
   },
@@ -37,6 +37,7 @@ export const dishService = {
       name,
       ingredients: cleanIngredients(body.ingredients),
       tags: cleanTags(body.tags),
+      notes: String(body.notes ?? existing.notes ?? '').trim(),
     });
   },
 

@@ -8,6 +8,7 @@ function toDish(row) {
     name: row.name,
     ingredients: JSON.parse(row.ingredients),
     tags: JSON.parse(row.tags),
+    notes: row.notes ?? '',
   };
 }
 
@@ -20,20 +21,21 @@ export const dishRepository = {
     return toDish(await get('SELECT * FROM dishes WHERE id = ? AND space_id = ?', [id, spaceId]));
   },
 
-  async create(spaceId, userId, { name, ingredients, tags }, createdAt) {
+  async create(spaceId, userId, { name, ingredients, tags, notes }, createdAt) {
     const info = await run(
-      `INSERT INTO dishes (space_id, name, ingredients, tags, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      [spaceId, name, JSON.stringify(ingredients), JSON.stringify(tags), userId, createdAt]
+      `INSERT INTO dishes (space_id, name, ingredients, tags, notes, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [spaceId, name, JSON.stringify(ingredients), JSON.stringify(tags), notes, userId, createdAt]
     );
     return this.findById(Number(info.lastInsertRowid ?? 0), spaceId);
   },
 
-  async update(id, spaceId, { name, ingredients, tags }) {
-    await run('UPDATE dishes SET name = ?, ingredients = ?, tags = ? WHERE id = ? AND space_id = ?', [
+  async update(id, spaceId, { name, ingredients, tags, notes }) {
+    await run('UPDATE dishes SET name = ?, ingredients = ?, tags = ?, notes = ? WHERE id = ? AND space_id = ?', [
       name,
       JSON.stringify(ingredients),
       JSON.stringify(tags),
+      notes,
       id,
       spaceId,
     ]);
